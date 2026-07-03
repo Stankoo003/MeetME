@@ -62,3 +62,20 @@ body {
 .spot-item:hover {
   background: rgba(10, 132, 255, 0.16);
 }
+
+.ds-window-frame {
+  transform-origin: center;
+  transition:
+    transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.15s ease;
+}
+
+.ds-window-frame[data-active='true'] {
+  transform: scale(1.015);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-window-frame {
+    transition: none;
+  }
+}

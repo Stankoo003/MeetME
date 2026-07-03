@@ -1,13 +1,13 @@
 import { useEffect, useRef, type KeyboardEvent } from 'react'
 import type { Theme } from '../theme'
-import { catalog, type AppId } from '../data'
+import { catalog, type WinId } from '../data'
 
 interface SpotlightProps {
   t: Theme
   open: boolean
   query: string
   onQueryChange: (q: string) => void
-  onChoose: (id: AppId) => void
+  onChoose: (id: WinId) => void
   onClose: () => void
 }
 

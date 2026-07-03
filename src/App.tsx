@@ -7,7 +7,7 @@ import {
   type MouseEvent,
 } from 'react'
 import { darkTheme, lightTheme, contributionPalette } from './theme'
-import { projects, type AppId } from './data'
+import { projects, projectWinId, type AppId, type WinId } from './data'
 import { Window } from './components/Window'
 import {
   AboutContent,
@@ -18,9 +18,12 @@ import {
   NowPlayingWidget,
   MilestonesContent,
   ContactContent,
+  type ActivityState,
 } from './components/windows'
 import { Dock } from './components/Dock'
 import { Spotlight } from './components/Spotlight'
+import { Lightbox } from './components/Lightbox'
+import { fetchContributions } from './lib/github'
 
 const CANVAS_HEIGHT = 2760
 const MOBILE_BREAKPOINT = 760
@@ -33,27 +36,104 @@ interface WinState {
   w: number
 }
 
-const initialWins: Record<AppId, WinState> = {
+const PROJECT_WIN_W = 480
+const PROJECT_WIN_H = 500
+const PROJECT_START = { x: 580, y: 1200 }
+
+// Only About, Projects, and Now Playing greet a first-time visitor — the rest
+// start closed so the initial view is skimmable instead of all 8 at once.
+const fixedInitialWins: Record<AppId, WinState> = {
   about: { open: true, x: 90, y: 330, z: 1, w: 440 },
   nowplaying: { open: true, x: 570, y: 300, z: 2, w: 300 },
   projects: { open: true, x: 110, y: 660, z: 3, w: 600 },
-  weather: { open: true, x: 740, y: 680, z: 4, w: 340 },
-  tools: { open: true, x: 110, y: 1240, z: 5, w: 440 },
-  proj1: { open: true, x: 580, y: 1200, z: 6, w: 480 },
-  github: { open: true, x: 110, y: 1760, z: 7, w: 780 },
-  contact: { open: true, x: 360, y: 2280, z: 8, w: 360 },
+  weather: { open: false, x: 740, y: 680, z: 4, w: 340 },
+  tools: { open: false, x: 110, y: 1240, z: 5, w: 440 },
+  github: { open: false, x: 110, y: 1760, z: 7, w: 780 },
+  contact: { open: false, x: 360, y: 2280, z: 8, w: 360 },
 }
 
-const contributionGraph = Array.from({ length: 371 }, () => {
-  const r = Math.random()
-  if (r < 0.5) return 0
-  if (r < 0.72) return 1
-  if (r < 0.86) return 2
-  if (r < 0.95) return 3
-  return 4
-})
+// Every project gets its own independent window, closed by default, so
+// several can be open side by side instead of sharing one shared slot.
+const initialWins: Record<WinId, WinState> = {
+  ...fixedInitialWins,
+  ...Object.fromEntries(
+    projects.map((_, idx) => [
+      projectWinId(idx),
+      { open: false, x: PROJECT_START.x, y: PROJECT_START.y, z: 0, w: PROJECT_WIN_W },
+    ]),
+  ),
+}
 
-function scrollToElement(id: AppId) {
+// Approximate rendered heights, used only to keep freshly-opened windows from
+// landing on top of ones that are already open — not the source of truth for
+// layout (the DOM decides actual height).
+const WINDOW_HEIGHT: Record<AppId, number> = {
+  about: 330,
+  nowplaying: 300,
+  projects: 460,
+  weather: 380,
+  tools: 300,
+  github: 380,
+  contact: 360,
+}
+
+function getWindowHeight(id: WinId): number {
+  return id.startsWith('project-') ? PROJECT_WIN_H : WINDOW_HEIGHT[id as AppId]
+}
+
+const PLACEMENT_MARGIN = 24
+const PLACEMENT_STEP = 40
+
+function rectsOverlap(
+  a: { x: number; y: number; w: number; h: number },
+  b: { x: number; y: number; w: number; h: number },
+  margin = PLACEMENT_MARGIN,
+) {
+  return !(
+    a.x + a.w + margin <= b.x ||
+    b.x + b.w + margin <= a.x ||
+    a.y + a.h + margin <= b.y ||
+    b.y + b.h + margin <= a.y
+  )
+}
+
+// Finds the first on-canvas spot for `id` that doesn't overlap any other
+// currently-open window, cascading diagonally from its default position.
+function findFreePosition(id: WinId, wins: Record<WinId, WinState>, canvasWidth: number) {
+  const { w } = wins[id]
+  const h = getWindowHeight(id)
+  const maxX = Math.max(0, canvasWidth - w)
+  const maxY = Math.max(10, CANVAS_HEIGHT - h - 40)
+  const openRects = Object.entries(wins)
+    .filter(([otherId, other]) => otherId !== id && other.open)
+    .map(([otherId, other]) => ({
+      x: other.x,
+      y: other.y,
+      w: other.w,
+      h: getWindowHeight(otherId as WinId),
+    }))
+
+  let x = initialWins[id].x
+  let y = initialWins[id].y
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const cx = Math.min(Math.max(x, 0), maxX)
+    const cy = Math.min(Math.max(y, 10), maxY)
+    const candidate = { x: cx, y: cy, w, h }
+    if (!openRects.some((r) => rectsOverlap(candidate, r))) {
+      return { x: cx, y: cy }
+    }
+    x += PLACEMENT_STEP
+    y += PLACEMENT_STEP
+    if (x > maxX) x = PLACEMENT_MARGIN
+    if (y > maxY) y = 10
+  }
+  return {
+    x: Math.min(Math.max(initialWins[id].x, 0), maxX),
+    y: Math.min(Math.max(initialWins[id].y, 10), maxY),
+  }
+}
+
+function scrollToElement(id: WinId) {
   setTimeout(() => {
     const el = document.querySelector(`[data-app="${id}"]`)
     if (el) {
@@ -75,36 +155,88 @@ function App() {
   const [wins, setWins] = useState(initialWins)
   const [spotlight, setSpotlight] = useState(false)
   const [query, setQuery] = useState('')
-  const [selProj, setSelProj] = useState(0)
+  const [zTop, setZTop] = useState(8)
+  const [activity, setActivity] = useState<ActivityState>({ status: 'loading' })
+  const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
   const zTopRef = useRef(8)
-  const dragRef = useRef<{ id: AppId; dx: number; dy: number } | null>(null)
+  const dragRef = useRef<{ id: WinId; dx: number; dy: number } | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchContributions()
+      .then((data) => {
+        if (!cancelled) setActivity({ status: 'ready', ...data })
+      })
+      .catch(() => {
+        if (!cancelled) setActivity({ status: 'error' })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const t = dark ? darkTheme : lightTheme
   const palette = dark ? contributionPalette.dark : contributionPalette.light
   const mobile = vw < MOBILE_BREAKPOINT
-  const scale = Math.min(1, vw / 1100)
 
-  const bringToFront = useCallback((id: AppId, patch?: Partial<WinState>) => {
-    zTopRef.current += 1
-    const z = zTopRef.current
-    setWins((s) => ({ ...s, [id]: { ...s[id], z, ...patch } }))
-  }, [])
+  const bringToFront = useCallback(
+    (
+      id: WinId,
+      patch?:
+        | Partial<WinState>
+        | ((current: WinState, all: Record<WinId, WinState>) => Partial<WinState>),
+    ) => {
+      zTopRef.current += 1
+      const z = zTopRef.current
+      setZTop(z)
+      setWins((s) => {
+        const resolved = typeof patch === 'function' ? patch(s[id], s) : patch
+        return { ...s, [id]: { ...s[id], z, ...resolved } }
+      })
+    },
+    [],
+  )
 
   useEffect(() => {
-    const onResize = () => setVw(window.innerWidth)
+    // Keep every window on-screen as the viewport shrinks — windows may now
+    // roam across the full width, so nothing else clamps them into view.
+    const onResize = () => {
+      const nextVw = window.innerWidth
+      setVw(nextVw)
+      if (nextVw < MOBILE_BREAKPOINT) return
+      setWins((s) => {
+        let changed = false
+        const next = { ...s }
+        for (const id of Object.keys(s) as WinId[]) {
+          const w = s[id]
+          const maxX = Math.max(0, nextVw - w.w)
+          if (w.x > maxX) {
+            next[id] = { ...w, x: maxX }
+            changed = true
+          }
+        }
+        return changed ? next : s
+      })
+    }
     const onMove = (e: globalThis.MouseEvent) => {
       const drag = dragRef.current
       if (!drag) return
       e.preventDefault()
-      const nx = e.pageX - drag.dx
-      const ny = Math.max(10, e.pageY - drag.dy)
-      setWins((s) => ({ ...s, [drag.id]: { ...s[drag.id], x: nx, y: ny } }))
+      setWins((s) => {
+        const w = s[drag.id]
+        const nx = Math.min(Math.max(e.pageX - drag.dx, 0), window.innerWidth - w.w)
+        const ny = Math.min(Math.max(e.pageY - drag.dy, 10), CANVAS_HEIGHT - 40)
+        return { ...s, [drag.id]: { ...w, x: nx, y: ny } }
+      })
     }
     const onUp = () => {
       dragRef.current = null
     }
     const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') setSpotlight(false)
+      if (e.key === 'Escape') {
+        setSpotlight(false)
+        setLightbox(null)
+      }
       if ((e.metaKey || e.ctrlKey) && e.code === 'Space') {
         e.preventDefault()
         setQuery('')
@@ -115,6 +247,7 @@ function App() {
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
     window.addEventListener('keydown', onKey)
+    onResize()
     return () => {
       window.removeEventListener('resize', onResize)
       window.removeEventListener('mousemove', onMove)
@@ -134,16 +267,17 @@ function App() {
     })
   }
 
-  const focusApp = useCallback((id: AppId) => bringToFront(id), [bringToFront])
+  const focusApp = useCallback((id: WinId) => bringToFront(id), [bringToFront])
 
-  const closeApp = useCallback((id: AppId) => {
+  const closeApp = useCallback((id: WinId) => {
     setWins((s) => ({ ...s, [id]: { ...s[id], open: false } }))
   }, [])
 
   const startDrag = useCallback(
-    (id: AppId, e: MouseEvent<HTMLDivElement>) => {
+    (id: WinId, e: MouseEvent<HTMLDivElement>) => {
       if (window.innerWidth < MOBILE_BREAKPOINT) return
       if ((e.target as HTMLElement).closest('[data-nodrag]')) return
+      e.preventDefault()
       const w = wins[id]
       dragRef.current = { id, dx: e.pageX - w.x, dy: e.pageY - w.y }
       bringToFront(id)
@@ -151,31 +285,42 @@ function App() {
     [bringToFront, wins],
   )
 
-  const scrollToApp = useCallback((id: AppId) => {
-    setWins((s) => (s[id].open ? s : { ...s, [id]: { ...s[id], open: true } }))
-    scrollToElement(id)
-  }, [])
+  const scrollToApp = useCallback(
+    (id: WinId) => {
+      setWins((s) => {
+        if (s[id].open) return s
+        const pos = findFreePosition(id, s, vw)
+        return { ...s, [id]: { ...s[id], open: true, ...pos } }
+      })
+      scrollToElement(id)
+    },
+    [vw],
+  )
 
   const openProject = useCallback(
     (idx: number) => {
-      setSelProj(idx)
-      bringToFront('proj1', { open: true })
-      scrollToElement('proj1')
+      const id = projectWinId(idx)
+      bringToFront(id, (w, all) =>
+        w.open ? { open: true } : { open: true, ...findFreePosition(id, all, vw) },
+      )
+      scrollToElement(id)
     },
-    [bringToFront],
+    [bringToFront, vw],
   )
 
   const chooseSpotlightResult = useCallback(
-    (id: AppId) => {
+    (id: WinId) => {
       setSpotlight(false)
       setQuery('')
-      bringToFront(id, { open: true })
+      bringToFront(id, (w, all) =>
+        w.open ? { open: true } : { open: true, ...findFreePosition(id, all, vw) },
+      )
       scrollToElement(id)
     },
-    [bringToFront],
+    [bringToFront, vw],
   )
 
-  const winStyle = (id: AppId): CSSProperties => {
+  const winStyle = (id: WinId): CSSProperties => {
     const w = wins[id]
     if (mobile) {
       return {
@@ -202,6 +347,8 @@ function App() {
     onClose: closeApp,
     onDragStart: startDrag,
   }
+
+  const isActive = (id: WinId) => mobile || wins[id].z === zTop
 
   return (
     <div
@@ -249,7 +396,7 @@ function App() {
             : {
                 position: 'relative',
                 width: '100%',
-                height: Math.round(CANVAS_HEIGHT * scale),
+                height: CANVAS_HEIGHT,
                 overflow: 'hidden',
               }
         }
@@ -267,11 +414,9 @@ function App() {
               : {
                   position: 'absolute',
                   top: 0,
-                  left: '50%',
-                  width: 1080,
+                  left: 0,
+                  width: '100%',
                   height: CANVAS_HEIGHT,
-                  transform: `translateX(-50%) scale(${scale})`,
-                  transformOrigin: 'top center',
                 }
           }
         >
@@ -324,6 +469,7 @@ function App() {
             id="about"
             title="About Me — Resume.txt"
             positionStyle={winStyle('about')}
+            isActive={isActive('about')}
             {...windowProps}
           >
             <AboutContent t={t} />
@@ -335,26 +481,50 @@ function App() {
             positionStyle={winStyle('projects')}
             headerHeight={44}
             frameStyle={{ display: 'flex', flexDirection: 'column', height: 460 }}
+            isActive={isActive('projects')}
             {...windowProps}
           >
             <ProjectsContent t={t} onOpenProject={openProject} />
           </Window>
 
+          {projects.map((project, idx) => {
+            const id = projectWinId(idx)
+            return (
+              <Window
+                key={id}
+                id={id}
+                title={project.name}
+                positionStyle={winStyle(id)}
+                isActive={isActive(id)}
+                {...windowProps}
+              >
+                <ProjectDetailContent
+                  t={t}
+                  project={project}
+                  onOpenScreenshot={(src, alt) => setLightbox({ src, alt })}
+                />
+              </Window>
+            )
+          })}
+
           <Window
-            id="proj1"
-            title={projects[selProj].name}
-            positionStyle={winStyle('proj1')}
+            id="tools"
+            title="Tools I Use"
+            positionStyle={winStyle('tools')}
+            isActive={isActive('tools')}
             {...windowProps}
           >
-            <ProjectDetailContent t={t} project={projects[selProj]} />
-          </Window>
-
-          <Window id="tools" title="Tools I Use" positionStyle={winStyle('tools')} {...windowProps}>
             <ToolsContent t={t} />
           </Window>
 
-          <Window id="github" title="Activity" positionStyle={winStyle('github')} {...windowProps}>
-            <ActivityContent t={t} graph={contributionGraph} palette={palette} />
+          <Window
+            id="github"
+            title="Activity"
+            positionStyle={winStyle('github')}
+            isActive={isActive('github')}
+            {...windowProps}
+          >
+            <ActivityContent t={t} activity={activity} palette={palette} />
           </Window>
 
           <NowPlayingWidget
@@ -368,12 +538,19 @@ function App() {
             id="weather"
             title="Milestones"
             positionStyle={winStyle('weather')}
+            isActive={isActive('weather')}
             {...windowProps}
           >
             <MilestonesContent t={t} />
           </Window>
 
-          <Window id="contact" title="Contact" positionStyle={winStyle('contact')} {...windowProps}>
+          <Window
+            id="contact"
+            title="Contact"
+            positionStyle={winStyle('contact')}
+            isActive={isActive('contact')}
+            {...windowProps}
+          >
             <ContactContent t={t} />
           </Window>
         </div>
@@ -396,6 +573,12 @@ function App() {
           setQuery('')
           setSpotlight(true)
         }}
+      />
+
+      <Lightbox
+        src={lightbox?.src ?? null}
+        alt={lightbox?.alt ?? 'Project screenshot'}
+        onClose={() => setLightbox(null)}
       />
     </div>
   )

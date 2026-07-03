@@ -1,17 +1,18 @@
 import type { CSSProperties, ReactNode, MouseEvent } from 'react'
 import type { Theme } from '../theme'
-import type { AppId } from '../data'
+import type { WinId } from '../data'
 
 interface WindowProps {
-  id: AppId
+  id: WinId
   title: string
   t: Theme
   positionStyle: CSSProperties
   frameStyle?: CSSProperties
   headerHeight?: number
-  onFocus: (id: AppId) => void
-  onClose: (id: AppId) => void
-  onDragStart: (id: AppId, e: MouseEvent<HTMLDivElement>) => void
+  isActive?: boolean
+  onFocus: (id: WinId) => void
+  onClose: (id: WinId) => void
+  onDragStart: (id: WinId, e: MouseEvent<HTMLDivElement>) => void
   children: ReactNode
 }
 
@@ -22,6 +23,7 @@ export function Window({
   positionStyle,
   frameStyle,
   headerHeight = 40,
+  isActive = true,
   onFocus,
   onClose,
   onDragStart,
@@ -30,6 +32,8 @@ export function Window({
   return (
     <div data-app={id} onMouseDown={() => onFocus(id)} style={positionStyle}>
       <div
+        className="ds-window-frame"
+        data-active={isActive}
         style={{
           border: '0.5px solid',
           borderRadius: 12,
@@ -37,7 +41,7 @@ export function Window({
           overflow: 'hidden',
           animation: 'winpop .18s ease',
           background: t.card,
-          borderColor: t.cardBorder,
+          borderColor: isActive ? t.accentBorder : t.cardBorder,
           color: t.text,
           ...frameStyle,
         }}
@@ -71,11 +75,25 @@ export function Window({
             />
             <div
               data-nodrag
-              style={{ width: 12, height: 12, borderRadius: '50%', background: '#febc2e' }}
+              style={{
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                background: '#febc2e',
+                opacity: 0.5,
+                cursor: 'default',
+              }}
             />
             <div
               data-nodrag
-              style={{ width: 12, height: 12, borderRadius: '50%', background: '#28c840' }}
+              style={{
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                background: '#28c840',
+                opacity: 0.5,
+                cursor: 'default',
+              }}
             />
           </div>
           <div
@@ -85,7 +103,8 @@ export function Window({
               fontSize: 13,
               fontWeight: 600,
               marginRight: 52,
-              color: t.sub,
+              color: isActive ? t.text : t.sub,
+              transition: 'color .15s ease',
             }}
           >
             {title}

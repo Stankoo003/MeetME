@@ -1,6 +1,7 @@
-import type { CSSProperties, MouseEvent } from 'react'
+import { useState, type CSSProperties, type MouseEvent } from 'react'
 import type { Theme } from '../theme'
 import { projects, tools, skills, milestones, type Project, type AppId } from '../data'
+import { BrandIcon } from './BrandIcon'
 
 const chipStyle = (t: Theme): CSSProperties => ({
   fontSize: 13,
@@ -14,23 +15,17 @@ export function AboutContent({ t }: { t: Theme }) {
   return (
     <div style={{ padding: '30px 34px 34px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 20 }}>
-        <div
+        <img
+          src="/profile.jpg"
+          alt="Aleksa Stanković"
           style={{
             width: 72,
             height: 72,
             borderRadius: '50%',
-            background: 'linear-gradient(145deg,#5aa9ff,#2f6fd0)',
             flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            fontSize: 26,
-            fontWeight: 600,
+            objectFit: 'cover',
           }}
-        >
-          AS
-        </div>
+        />
         <div>
           <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.4 }}>Aleksa Stanković</div>
           <div style={{ fontSize: 15, color: '#0a84ff', fontWeight: 500 }}>
@@ -217,22 +212,51 @@ export function ProjectsContent({
   )
 }
 
-export function ProjectDetailContent({ t, project }: { t: Theme; project: Project }) {
+function ProjectScreenshot({
+  t,
+  project,
+  onOpen,
+}: {
+  t: Theme
+  project: Project
+  onOpen: (src: string, alt: string) => void
+}) {
+  const [failed, setFailed] = useState(false)
+  const hasImage = Boolean(project.screenshot) && !failed
+
   return (
-    <div style={{ padding: '26px 30px 30px' }}>
-      <div
-        style={{
-          width: '100%',
-          height: 200,
-          borderRadius: 10,
-          backgroundImage: `repeating-linear-gradient(135deg, ${t.stripeA} 0 12px, ${t.stripeB} 12px 24px)`,
-          border: `1px solid ${t.line}`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: 20,
-        }}
-      >
+    <div
+      onClick={
+        hasImage
+          ? () => onOpen(project.screenshot as string, `${project.full} screenshot`)
+          : undefined
+      }
+      title={hasImage ? 'View full screenshot' : undefined}
+      style={{
+        width: '100%',
+        height: 200,
+        borderRadius: 10,
+        overflow: 'hidden',
+        border: `1px solid ${t.line}`,
+        marginBottom: 20,
+        cursor: hasImage ? 'zoom-in' : 'default',
+        backgroundImage: hasImage
+          ? undefined
+          : `repeating-linear-gradient(135deg, ${t.stripeA} 0 12px, ${t.stripeB} 12px 24px)`,
+        display: hasImage ? 'block' : 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {hasImage ? (
+        <img
+          src={project.screenshot}
+          alt={`${project.full} screenshot`}
+          loading="lazy"
+          onError={() => setFailed(true)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
+      ) : (
         <span
           style={{
             fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace",
@@ -242,7 +266,23 @@ export function ProjectDetailContent({ t, project }: { t: Theme; project: Projec
         >
           [ project screenshot ]
         </span>
-      </div>
+      )}
+    </div>
+  )
+}
+
+export function ProjectDetailContent({
+  t,
+  project,
+  onOpenScreenshot,
+}: {
+  t: Theme
+  project: Project
+  onOpenScreenshot: (src: string, alt: string) => void
+}) {
+  return (
+    <div style={{ padding: '26px 30px 30px' }}>
+      <ProjectScreenshot key={project.name} t={t} project={project} onOpen={onOpenScreenshot} />
       <div
         style={{
           display: 'flex',
@@ -275,27 +315,33 @@ export function ProjectDetailContent({ t, project }: { t: Theme; project: Projec
       <p style={{ fontSize: 14, lineHeight: 1.65, margin: '0 0 20px' }}>{project.desc}</p>
       <div style={{ display: 'flex', gap: 10 }}>
         <button
+          disabled
+          title="Link coming soon"
           style={{
             fontSize: 13,
             fontWeight: 500,
             padding: '8px 16px',
             background: '#0a84ff',
             color: '#fff',
+            opacity: 0.45,
             border: 'none',
             borderRadius: 8,
-            cursor: 'pointer',
+            cursor: 'not-allowed',
           }}
         >
           View Live
         </button>
         <button
+          disabled
+          title="Link coming soon"
           style={{
             fontSize: 13,
             fontWeight: 500,
             padding: '8px 16px',
             border: 'none',
             borderRadius: 8,
-            cursor: 'pointer',
+            cursor: 'not-allowed',
+            opacity: 0.45,
             background: t.chipBg,
             color: t.chipText,
           }}
@@ -324,14 +370,11 @@ export function ToolsContent({ t }: { t: Theme }) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#fff',
-                fontSize: 20,
-                fontWeight: 700,
                 boxShadow: '0 3px 8px rgba(0,0,0,0.14)',
                 background: tool.color,
               }}
             >
-              {tool.letter}
+              <BrandIcon name={tool.icon} size={26} color="#fff" />
             </div>
             <span style={{ fontSize: 12, textAlign: 'center', color: t.chipText }}>
               {tool.name}
@@ -343,21 +386,32 @@ export function ToolsContent({ t }: { t: Theme }) {
   )
 }
 
+export type ActivityState =
+  { status: 'loading' } | { status: 'error' } | { status: 'ready'; total: number; cells: number[] }
+
 export function ActivityContent({
   t,
-  graph,
+  activity,
   palette,
 }: {
   t: Theme
-  graph: number[]
+  activity: ActivityState
   palette: string[]
 }) {
+  const cells = activity.status === 'ready' ? activity.cells : []
+
   return (
     <div style={{ padding: '24px 26px 26px' }}>
       <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 2 }}>Contribution activity</div>
       <div style={{ fontSize: 13, marginBottom: 18, color: t.sub }}>
-        <span style={{ color: t.text, fontWeight: 600 }}>312</span> contributions in the last year ·
-        placeholder
+        {activity.status === 'ready' && (
+          <>
+            <span style={{ color: t.text, fontWeight: 600 }}>{activity.total}</span> contributions
+            in the last year · live from github.com/stankoo003
+          </>
+        )}
+        {activity.status === 'loading' && 'Loading live activity…'}
+        {activity.status === 'error' && 'Live activity unavailable right now'}
       </div>
       <div
         style={{
@@ -368,9 +422,10 @@ export function ActivityContent({
           gap: 3,
           overflowX: 'auto',
           paddingBottom: 4,
+          opacity: activity.status === 'ready' ? 1 : 0.4,
         }}
       >
-        {graph.map((level, i) => (
+        {(cells.length > 0 ? cells : Array.from({ length: 371 }, () => 0)).map((level, i) => (
           <div
             key={i}
             style={{ width: 12, height: 12, borderRadius: 3, background: palette[level] }}
@@ -592,8 +647,8 @@ export function MilestonesContent({ t }: { t: Theme }) {
             position: 'absolute',
             top: 11,
             left: 14,
-            fontFamily: "ui-monospace,'SF Mono',Menlo,monospace",
             fontSize: 10,
+            fontWeight: 600,
             letterSpacing: 1.5,
             color: 'rgba(255,255,255,0.72)',
           }}
@@ -604,9 +659,8 @@ export function MilestonesContent({ t }: { t: Theme }) {
       <div style={{ padding: '15px 18px 2px', display: 'flex', alignItems: 'baseline', gap: 11 }}>
         <div
           style={{
-            fontFamily: "ui-monospace,'SF Mono',Menlo,monospace",
             fontSize: 40,
-            fontWeight: 600,
+            fontWeight: 700,
             lineHeight: 1,
             letterSpacing: -1.5,
           }}
@@ -655,9 +709,7 @@ export function MilestonesContent({ t }: { t: Theme }) {
               }}
             >
               <div style={{ width: 12, height: 12, borderRadius: '50%', background: t.sub }} />
-              <div style={{ fontFamily: "ui-monospace,'SF Mono',Menlo,monospace", fontSize: 11 }}>
-                {m.year}
-              </div>
+              <div style={{ fontSize: 11, fontWeight: 500 }}>{m.year}</div>
               <div style={{ fontSize: 10, color: t.sub }}>{m.label}</div>
             </div>
           ))}
@@ -679,16 +731,7 @@ export function MilestonesContent({ t }: { t: Theme }) {
                 boxShadow: '0 0 0 4px rgba(10,132,255,0.18)',
               }}
             />
-            <div
-              style={{
-                fontFamily: "ui-monospace,'SF Mono',Menlo,monospace",
-                fontSize: 11,
-                fontWeight: 700,
-                color: '#0a84ff',
-              }}
-            >
-              2026
-            </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#0a84ff' }}>2026</div>
             <div style={{ fontSize: 10, color: '#0a84ff' }}>Grad</div>
           </div>
         </div>

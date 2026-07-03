@@ -1,0 +1,175 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-03T00:00:00.000Z",
+  "title": "Design System: MeetMe",
+  "extensions": {
+    "colorMeta": {
+      "accent-blue": {
+        "role": "primary",
+        "displayName": "Signal Blue",
+        "canonical": "oklch(60% 0.19 255)",
+        "tonalRamp": [
+          "#062a52",
+          "#0a3d75",
+          "#0e5299",
+          "#1268bd",
+          "#0a84ff",
+          "#4ba3ff",
+          "#8ec5ff",
+          "#d3e9ff"
+        ]
+      },
+      "light-desktop": {
+        "role": "neutral",
+        "displayName": "Porcelain Desktop",
+        "canonical": "linear-gradient(165deg,#eef0f4 0%,#e4e7ec 55%,#dcdfe6 100%)",
+        "tonalRamp": ["#c7cbd4", "#d0d4dc", "#dcdfe6", "#e4e7ec", "#eef0f4", "#f3f5f8", "#f8f9fb", "#ffffff"]
+      },
+      "light-card": {
+        "role": "neutral",
+        "displayName": "Paper Card",
+        "canonical": "#fbfbfd",
+        "tonalRamp": ["#c9c9cd", "#d8d8db", "#e6e6e9", "#f0f0f2", "#fbfbfd", "#ffffff", "#ffffff", "#ffffff"]
+      },
+      "light-ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1d1d1f",
+        "tonalRamp": ["#000000", "#0a0a0b", "#1d1d1f", "#3a3a3d", "#5c5c60", "#86868b", "#b5b5b9", "#e5e5e7"]
+      },
+      "light-sub": {
+        "role": "neutral",
+        "displayName": "Quiet Gray",
+        "canonical": "#86868b",
+        "tonalRamp": ["#3a3a3d", "#525256", "#6a6a6f", "#86868b", "#a0a0a4", "#bcbcc0", "#d8d8da", "#f0f0f1"]
+      },
+      "dark-desktop": {
+        "role": "neutral",
+        "displayName": "Graphite Desktop",
+        "canonical": "linear-gradient(165deg,#20222a 0%,#16181e 55%,#0f1015 100%)",
+        "tonalRamp": ["#0a0b0d", "#0f1015", "#16181e", "#20222a", "#2c2e37", "#3c3f4a", "#565a67", "#7d818f"]
+      },
+      "dark-card": {
+        "role": "neutral",
+        "displayName": "Charcoal Card",
+        "canonical": "#282a30",
+        "tonalRamp": ["#0f1013", "#17181c", "#202127", "#282a30", "#3a3c44", "#54565f", "#75767f", "#a0a0a6"]
+      },
+      "dark-ink": {
+        "role": "neutral",
+        "displayName": "Off-White Ink",
+        "canonical": "#f0f0f2",
+        "tonalRamp": ["#38383a", "#5c5c5f", "#828285", "#a8a8ab", "#c8c8ca", "#e0e0e2", "#f0f0f2", "#ffffff"]
+      },
+      "dark-sub": {
+        "role": "neutral",
+        "displayName": "Muted Slate",
+        "canonical": "#9a9aa2",
+        "tonalRamp": ["#2e2e33", "#454549", "#5e5e64", "#77777e", "#8f8f97", "#9a9aa2", "#b6b6bc", "#d2d2d6"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "The 'MeetMe' hero watermark only. Decorative, never load-bearing content." },
+      "title": { "displayName": "Title", "purpose": "Window-content headings: person's name, project title." },
+      "body": { "displayName": "Body", "purpose": "All paragraph copy inside windows." },
+      "label": { "displayName": "Label", "purpose": "Uppercase section eyebrows inside windows (Skills, Favorites, Currently Building)." },
+      "mono": { "displayName": "Mono", "purpose": "System-readout feel: timestamps, forecast readouts, contribution-graph captions." }
+    },
+    "shadows": [
+      { "name": "window", "value": "0 24px 70px rgba(15,20,35,0.32), 0 2px 8px rgba(0,0,0,0.08)", "purpose": "Default elevation for every content window." },
+      { "name": "widget-elevated", "value": "0 24px 70px rgba(15,20,35,0.4), 0 2px 8px rgba(0,0,0,0.1)", "purpose": "Now Playing widget — slightly heavier since it always uses a dark gradient regardless of theme." },
+      { "name": "dock-glass", "value": "0 12px 40px rgba(15,20,35,0.28)", "purpose": "Dock, paired with backdrop-filter blur." },
+      { "name": "spotlight-glass", "value": "0 30px 80px rgba(10,15,30,0.4)", "purpose": "Spotlight search bar, paired with backdrop-filter blur." }
+    ],
+    "motion": [
+      { "name": "winpop", "value": "scale(.97) translateY(6px) -> none, .18s ease", "purpose": "Every window's pop-in entrance." },
+      { "name": "spotpop", "value": "opacity 0, translateY(-10px) scale(.98) -> opacity 1, none, .16s ease", "purpose": "Spotlight overlay entrance." },
+      { "name": "dock-hover", "value": "translateY(-10px) scale(1.12), .16s ease", "purpose": "Dock icon hover affordance — motion instead of color change." },
+      { "name": "eq", "value": "height 4px <-> 14px, 0.9s ease-in-out infinite (staggered per bar)", "purpose": "Now Playing equalizer bars." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "760px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Window Chrome",
+      "kind": "custom",
+      "refersTo": "window-frame",
+      "description": "Shared header/body chrome for every content window (About, Projects, Tools, Activity, Milestones, Contact).",
+      "html": "<div class=\"ds-window\"><div class=\"ds-window-header\"><div class=\"ds-dots\"><span class=\"ds-dot ds-dot-close\"></span><span class=\"ds-dot ds-dot-min\"></span><span class=\"ds-dot ds-dot-zoom\"></span></div><div class=\"ds-window-title\">About Me — Resume.txt</div></div><div class=\"ds-window-body\">Window content goes here.</div></div>",
+      "css": ".ds-window { border: 0.5px solid rgba(0,0,0,0.12); border-radius: 12px; box-shadow: 0 24px 70px rgba(15,20,35,0.32), 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; background: #fbfbfd; color: #1d1d1f; } .ds-window-header { height: 40px; display: flex; align-items: center; padding: 0 14px; border-bottom: 0.5px solid rgba(0,0,0,0.09); background: #f2f2f4; } .ds-dots { display: flex; gap: 8px; } .ds-dot { width: 12px; height: 12px; border-radius: 50%; } .ds-dot-close { background: #ff5f57; cursor: pointer; } .ds-dot-min { background: #febc2e; } .ds-dot-zoom { background: #28c840; } .ds-window-title { flex: 1; text-align: center; font-size: 13px; font-weight: 600; margin-right: 52px; color: #86868b; } .ds-window-body { padding: 30px 34px; font-size: 14px; line-height: 1.65; }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single accent-filled action per screen (Email me, View Live).",
+      "html": "<button class=\"ds-btn-primary\">View Live</button>",
+      "css": ".ds-btn-primary { font-size: 13px; font-weight: 500; padding: 8px 16px; background: #0a84ff; color: #fff; border: none; border-radius: 8px; cursor: pointer; transition: background 0.15s ease; } .ds-btn-primary:hover { background: #0972dd; } .ds-btn-primary:focus-visible { outline: 2px solid #0a84ff; outline-offset: 2px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Neutral secondary action (Source, GitHub, LinkedIn links).",
+      "html": "<button class=\"ds-btn-ghost\">Source</button>",
+      "css": ".ds-btn-ghost { font-size: 13px; font-weight: 500; padding: 8px 16px; background: #eef0f3; color: #3a3a3f; border: none; border-radius: 8px; cursor: pointer; transition: background 0.15s ease; } .ds-btn-ghost:hover { background: #e4e6ea; } .ds-btn-ghost:focus-visible { outline: 2px solid #0a84ff; outline-offset: 2px; }"
+    },
+    {
+      "name": "Neutral Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Skill / tool tags inside About and Tools windows.",
+      "html": "<span class=\"ds-chip\">SwiftUI</span>",
+      "css": ".ds-chip { font-size: 13px; padding: 5px 12px; border-radius: 8px; background: #eef0f3; color: #3a3a3f; display: inline-block; }"
+    },
+    {
+      "name": "Accent Chip",
+      "kind": "chip",
+      "refersTo": "chip-accent",
+      "description": "Project-detail tags — the one place chips take the accent color.",
+      "html": "<span class=\"ds-chip-accent\">React Native</span>",
+      "css": ".ds-chip-accent { font-size: 12px; padding: 4px 10px; background: rgba(10,132,255,0.14); color: #0a84ff; border-radius: 7px; font-weight: 500; display: inline-block; }"
+    },
+    {
+      "name": "Dock",
+      "kind": "nav",
+      "refersTo": "dock",
+      "description": "Fixed-bottom frosted-glass icon dock; the primary navigation between windows.",
+      "html": "<div class=\"ds-dock\"><div class=\"ds-dock-icon\" style=\"background:linear-gradient(160deg,#8fb8ff,#5a8ff0)\"></div><div class=\"ds-dock-icon\" style=\"background:linear-gradient(160deg,#f2f4f8,#dfe3ea)\"></div><div class=\"ds-dock-divider\"></div></div>",
+      "css": ".ds-dock { display: flex; align-items: flex-end; gap: 12px; padding: 10px 14px; backdrop-filter: saturate(180%) blur(24px); border: 0.5px solid rgba(255,255,255,0.6); border-radius: 22px; box-shadow: 0 12px 40px rgba(15,20,35,0.28); background: rgba(255,255,255,0.5); } .ds-dock-icon { width: 52px; height: 52px; border-radius: 13px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: transform 0.16s ease; cursor: pointer; } .ds-dock-icon:hover { transform: translateY(-10px) scale(1.12); } .ds-dock-divider { width: 0.5px; height: 42px; margin: 0 1px; background: rgba(0,0,0,0.14); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Personal Desktop",
+    "overview": "MeetMe recreates the feeling of opening someone's actual Mac and finding their work already open in front of you — windows scattered mid-thought, a dock along the bottom, a Spotlight search a keystroke away. It is not a portfolio about a desktop; it behaves like one: windows drag, stack, focus, and close with the same physics macOS trained everyone to expect. That familiarity is the trick — because the interaction model is free, every ounce of personality gets to live in the details instead: the equalizer bars on 'Now Playing,' the forecast-styled career milestones, the Finder-style project browser. This system explicitly rejects the generic SaaS-portfolio look: no card grids of identical project tiles, no gradient-text name in a hero, no hero-metric block with big numbers and small labels. It also rejects anything that reads as a resume PDF reformatted for the web — static, list-shaped, skimmed once and forgotten. The desktop metaphor exists so a visitor plays first and reads second.",
+    "keyCharacteristics": [
+      "Native macOS window chrome (traffic-light buttons, 40-44px header bar) on every panel, light or dark.",
+      "One accent color (#0a84ff) doing all the signaling work — links, tags, active states — everywhere else stays neutral.",
+      "Frosted-glass surfaces reserved for floating, always-on-top chrome: the dock, Spotlight, the theme toggle. Window bodies stay opaque.",
+      "Every window pops in with the same winpop micro-animation; nothing on the page enters silently."
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "Signal Blue is the only saturated color allowed outside decorative dock-icon gradients and the Now Playing/Milestones widget backgrounds (themed set-pieces, not core palette). If a new element needs to stand out, reach for weight or size before reaching for a second color.", "section": "colors" },
+      { "name": "The System-Font Rule", "body": "Never introduce a second typeface family. Every new hierarchy level is built from this one stack via weight, size, and letter-spacing only.", "section": "typography" },
+      { "name": "The Glass-Is-Chrome-Only Rule", "body": "Frosted blur is reserved for the dock, Spotlight, and the theme toggle — UI that floats above all windows. Window bodies are always opaque cards, never glass.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep every window's chrome identical (traffic-light dots, header height, 12px radius, the two-part Window shadow).",
+      "Do let Signal Blue (#0a84ff) be the only color that means 'interactive' — links, active states, primary buttons, project tags.",
+      "Do reserve backdrop-filter blur for floating OS chrome only (dock, Spotlight, theme toggle) per the Glass-Is-Chrome-Only Rule.",
+      "Do drive every visual difference between light and dark mode from the shared theme token object — never hardcode a color that isn't accent blue or an intentionally-dark widget.",
+      "Do give every window entrance the same winpop pop-in animation, and provide a prefers-reduced-motion fallback for it, the dock hover pop, the equalizer bars, and Spotlight's spotpop."
+    ],
+    "donts": [
+      "Don't build a generic 'SaaS portfolio' card grid of identically-sized project tiles with icon + heading + text.",
+      "Don't use gradient text (background-clip: text + gradient) anywhere, including on 'MeetMe'.",
+      "Don't add a hero-metric block (big number + small label + supporting stats).",
+      "Don't make a content window's body translucent/glass — glass is chrome-only.",
+      "Don't introduce a second typeface family for any reason.",
+      "Don't use border-left/border-right heavier than 1px as a colored accent stripe on any card, chip, or list item.",
+      "Don't add a second saturated accent color competing with Signal Blue outside the intentionally-themed dock-icon gradients and Now Playing/Milestones widgets."
+    ]
+  }
+}

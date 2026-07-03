@@ -4,6 +4,7 @@ export interface Theme {
   barText: string
   card: string
   cardBorder: string
+  accentBorder: string
   head: string
   line: string
   text: string
@@ -31,6 +32,7 @@ export const darkTheme: Theme = {
   barText: '#f0f0f2',
   card: '#282a30',
   cardBorder: 'rgba(255,255,255,0.1)',
+  accentBorder: 'rgba(10,132,255,0.55)',
   head: '#303239',
   line: 'rgba(255,255,255,0.09)',
   text: '#f0f0f2',
@@ -58,6 +60,7 @@ export const lightTheme: Theme = {
   barText: '#1d1d1f',
   card: '#fbfbfd',
   cardBorder: 'rgba(0,0,0,0.12)',
+  accentBorder: 'rgba(10,132,255,0.5)',
   head: '#f2f2f4',
   line: 'rgba(0,0,0,0.09)',
   text: '#1d1d1f',
