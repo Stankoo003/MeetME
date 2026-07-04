@@ -1,4 +1,5 @@
-export type AppId = 'about' | 'projects' | 'tools' | 'github' | 'nowplaying' | 'weather' | 'contact'
+export type AppId =
+  'about' | 'projects' | 'tools' | 'github' | 'nowplaying' | 'weather' | 'contact' | 'terminal'
 
 /** Each opened project gets its own independent window, keyed by its index. */
 export type ProjectWinId = `project-${number}`
@@ -148,6 +149,13 @@ export const catalog: CatalogItem[] = [
     sub: 'Email · GitHub · LinkedIn',
     letter: 'C',
     color: 'linear-gradient(160deg,#5fd0a0,#28b57f)',
+  },
+  {
+    target: 'terminal',
+    name: 'Terminal',
+    sub: 'whoami · ls projects · contact --email',
+    letter: '_',
+    color: 'linear-gradient(160deg,#3a3a3f,#101012)',
   },
 ]
 

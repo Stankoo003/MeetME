@@ -18,12 +18,16 @@ import {
   NowPlayingWidget,
   MilestonesContent,
   ContactContent,
+  TerminalContent,
   type ActivityState,
 } from './components/windows'
 import { Dock } from './components/Dock'
 import { Spotlight } from './components/Spotlight'
 import { Lightbox } from './components/Lightbox'
+import { ScreenSaver } from './components/ScreenSaver'
+import { LockScreen } from './components/LockScreen'
 import { fetchContributions } from './lib/github'
+import { useIdle } from './lib/useIdle'
 
 const CANVAS_HEIGHT = 2760
 const MOBILE_BREAKPOINT = 760
@@ -50,6 +54,7 @@ const fixedInitialWins: Record<AppId, WinState> = {
   tools: { open: false, x: 110, y: 1240, z: 5, w: 440 },
   github: { open: false, x: 110, y: 1760, z: 7, w: 780 },
   contact: { open: false, x: 360, y: 2280, z: 8, w: 360 },
+  terminal: { open: false, x: 740, y: 1240, z: 9, w: 460 },
 }
 
 // Every project gets its own independent window, closed by default, so
@@ -75,6 +80,7 @@ const WINDOW_HEIGHT: Record<AppId, number> = {
   tools: 300,
   github: 380,
   contact: 360,
+  terminal: 360,
 }
 
 function getWindowHeight(id: WinId): number {
@@ -158,6 +164,8 @@ function App() {
   const [zTop, setZTop] = useState(8)
   const [activity, setActivity] = useState<ActivityState>({ status: 'loading' })
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
+  const [locked, setLocked] = useState(true)
+  const idle = useIdle(20_000)
   const zTopRef = useRef(8)
   const dragRef = useRef<{ id: WinId; dx: number; dy: number } | null>(null)
 
@@ -553,6 +561,16 @@ function App() {
           >
             <ContactContent t={t} />
           </Window>
+
+          <Window
+            id="terminal"
+            title="terminal — zsh"
+            positionStyle={winStyle('terminal')}
+            isActive={isActive('terminal')}
+            {...windowProps}
+          >
+            <TerminalContent t={t} onOpenProject={openProject} />
+          </Window>
         </div>
       </div>
 
@@ -580,6 +598,10 @@ function App() {
         alt={lightbox?.alt ?? 'Project screenshot'}
         onClose={() => setLightbox(null)}
       />
+
+      <ScreenSaver t={t} active={idle} onDismiss={() => {}} />
+
+      {locked && <LockScreen t={t} onUnlock={() => setLocked(false)} />}
     </div>
   )
 }

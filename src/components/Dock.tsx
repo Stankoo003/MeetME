@@ -320,6 +320,31 @@ export function Dock({ t, mobile, onScrollToApp, onOpenSpotlight }: DockProps) {
           </div>
         </div>
       </DockIcon>
+      <DockIcon
+        id="terminal"
+        title="Terminal"
+        mobile={mobile}
+        onClick={() => onScrollToApp('terminal')}
+      >
+        <div
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: 13,
+            background: 'linear-gradient(160deg,#3a3a3f,#101012)',
+            boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#7fe38f',
+            fontSize: 20,
+            fontFamily: 'ui-monospace, Menlo, monospace',
+            fontWeight: 700,
+          }}
+        >
+          &gt;_
+        </div>
+      </DockIcon>
       <div style={{ width: 0.5, height: 42, margin: '0 1px', background: t.divider }} />
       <DockIcon title="Spotlight" mobile={mobile} onClick={onOpenSpotlight}>
         <div

@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type MouseEvent } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
 import type { Theme } from '../theme'
 import { projects, tools, skills, milestones, type Project, type AppId } from '../data'
 import { BrandIcon } from './BrandIcon'
@@ -797,6 +797,201 @@ export function ContactContent({ t }: { t: Theme }) {
         >
           LinkedIn — stankoo003
         </a>
+      </div>
+    </div>
+  )
+}
+
+const TERMINAL_EMAIL = 'aleksastbusiness@gmail.com'
+const TERMINAL_HELP = [
+  'Available commands:',
+  '  whoami            who you are talking to',
+  '  ls [projects]     list files, or list projects/',
+  '  cat <file>        about.txt · contact.txt',
+  '  open <project>    opens a project window',
+  '  contact --email   print my email',
+  '  date              current date & time',
+  '  clear             clear the screen',
+  '  help              show this list',
+]
+
+type TermSlug = { slug: string; idx: number }
+
+function projectSlugs(): TermSlug[] {
+  return projects.map((p, idx) => ({ slug: p.name.toLowerCase().replace(/\s+/g, '-'), idx }))
+}
+
+function runTerminalCommand(raw: string, onOpenProject: (idx: number) => void): string[] {
+  const trimmed = raw.trim()
+  if (!trimmed) return []
+  const [cmd, ...rest] = trimmed.split(/\s+/)
+  const arg = rest.join(' ')
+  switch (cmd.toLowerCase()) {
+    case 'help':
+      return TERMINAL_HELP
+    case 'whoami':
+      return ['aleksa — iOS / React Native / full-stack developer, building things that ship.']
+    case 'ls':
+      if (arg === 'projects') return projectSlugs().map((p) => p.slug)
+      return ['about.txt  contact.txt  projects/']
+    case 'cat':
+      if (arg === 'about.txt') {
+        return [
+          'Aleksa Stanković — building iOS, React Native, and full-stack apps.',
+          'Currently: Ora, a time-focus app for iOS/watchOS.',
+        ]
+      }
+      if (arg === 'contact.txt') {
+        return [
+          `email:    ${TERMINAL_EMAIL}`,
+          'github:   github.com/stankoo003',
+          'linkedin: linkedin.com/in/stankoo003',
+        ]
+      }
+      return [`cat: ${arg || '(missing file)'}: No such file`]
+    case 'contact':
+      if (arg === '--email') return [TERMINAL_EMAIL]
+      return ['usage: contact --email']
+    case 'open': {
+      const match = projectSlugs().find((p) => p.slug === arg.toLowerCase())
+      if (match) {
+        onOpenProject(match.idx)
+        return [`Opening ${projects[match.idx].name}…`]
+      }
+      return [`open: ${arg || '(missing project)'}: not found — try 'ls projects'`]
+    }
+    case 'clear':
+      return ['__CLEAR__']
+    case 'date':
+      return [new Date().toString()]
+    case 'sudo':
+      return ['Permission denied: nice try 😏']
+    default:
+      return [`command not found: ${cmd} — type 'help'`]
+  }
+}
+
+interface TermLine {
+  id: number
+  kind: 'cmd' | 'out'
+  text: string
+}
+
+export function TerminalContent({
+  t,
+  onOpenProject,
+}: {
+  t: Theme
+  onOpenProject: (idx: number) => void
+}) {
+  const [lines, setLines] = useState<TermLine[]>([
+    { id: -1, kind: 'out', text: "Welcome. Type 'help' to see what's available." },
+  ])
+  const [typing, setTyping] = useState<{ id: number; full: string; shown: number } | null>(null)
+  const queueRef = useRef<string[]>([])
+  const idRef = useRef(0)
+  const [input, setInput] = useState('')
+  const bodyRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+
+  // A single interval drives both dequeuing and the typewriter reveal — all
+  // state updates happen inside its callback (not synchronously in the
+  // effect body) so mount-time setup never triggers a cascading render.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTyping((prev) => {
+        if (prev) {
+          if (prev.shown >= prev.full.length) {
+            setLines((ls) => [...ls, { id: prev.id, kind: 'out', text: prev.full }])
+            return null
+          }
+          return { ...prev, shown: prev.shown + 1 }
+        }
+        const next = queueRef.current.shift()
+        if (next === undefined) return prev
+        idRef.current += 1
+        return { id: idRef.current, full: next, shown: 0 }
+      })
+    }, 10)
+    return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight
+  })
+
+  const submit = () => {
+    const cmd = input
+    idRef.current += 1
+    setLines((ls) => [...ls, { id: idRef.current, kind: 'cmd', text: cmd }])
+    setInput('')
+    const outputs = runTerminalCommand(cmd, onOpenProject)
+    if (outputs[0] === '__CLEAR__') {
+      queueRef.current = []
+      setTyping(null)
+      setLines([])
+      return
+    }
+    queueRef.current.push(...outputs)
+  }
+
+  return (
+    <div
+      data-nodrag
+      onClick={() => inputRef.current?.focus()}
+      style={{
+        background: '#0d0e12',
+        color: '#7fe38f',
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
+        fontSize: 13,
+        height: 320,
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <div ref={bodyRef} style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
+        {lines.map((l) => (
+          <div key={l.id} style={{ whiteSpace: 'pre-wrap', marginBottom: 2 }}>
+            {l.kind === 'cmd' ? (
+              <span>
+                <span style={{ color: '#5aa9ff' }}>guest@meetme</span>
+                <span style={{ color: t.sub }}> ~ % </span>
+                {l.text}
+              </span>
+            ) : (
+              l.text
+            )}
+          </div>
+        ))}
+        {typing && (
+          <div style={{ whiteSpace: 'pre-wrap', marginBottom: 2 }}>
+            {typing.full.slice(0, typing.shown)}
+            <span style={{ opacity: 0.7 }}>▋</span>
+          </div>
+        )}
+        <div style={{ display: 'flex' }}>
+          <span style={{ color: '#5aa9ff' }}>guest@meetme</span>
+          <span style={{ color: t.sub }}>&nbsp;~ %&nbsp;</span>
+          <input
+            ref={inputRef}
+            data-nodrag
+            autoFocus
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submit()
+            }}
+            style={{
+              flex: 1,
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              color: '#7fe38f',
+              fontFamily: 'inherit',
+              fontSize: 13,
+            }}
+          />
+        </div>
       </div>
     </div>
   )
