@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -29,8 +30,13 @@ import { LockScreen } from './components/LockScreen'
 import { fetchContributions } from './lib/github'
 import { useIdle } from './lib/useIdle'
 
-const CANVAS_HEIGHT = 2760
+const BASE_CANVAS_HEIGHT = 2760
 const MOBILE_BREAKPOINT = 760
+
+// Persisted layout. Bump the version to discard saved layouts after a
+// structural change (windows added/removed, different default sizing).
+const LAYOUT_VERSION = 1
+const STORAGE_KEY = 'meetme-layout'
 
 interface WinState {
   open: boolean
@@ -41,54 +47,60 @@ interface WinState {
 }
 
 const PROJECT_WIN_W = 480
-const PROJECT_WIN_H = 500
-const PROJECT_START = { x: 580, y: 1200 }
+const PROJECT_WIN_H = 560
 
-// Only About, Projects, and Now Playing greet a first-time visitor — the rest
-// start closed so the initial view is skimmable instead of all 8 at once.
-const fixedInitialWins: Record<AppId, WinState> = {
-  about: { open: true, x: 90, y: 330, z: 1, w: 440 },
-  nowplaying: { open: true, x: 570, y: 300, z: 2, w: 300 },
-  projects: { open: true, x: 110, y: 660, z: 3, w: 600 },
-  weather: { open: false, x: 740, y: 680, z: 4, w: 340 },
-  tools: { open: false, x: 110, y: 1240, z: 5, w: 440 },
-  github: { open: false, x: 110, y: 1760, z: 7, w: 780 },
-  contact: { open: false, x: 360, y: 2280, z: 8, w: 360 },
-  terminal: { open: false, x: 740, y: 1240, z: 9, w: 460 },
-}
-
-// Every project gets its own independent window, closed by default, so
-// several can be open side by side instead of sharing one shared slot.
-const initialWins: Record<WinId, WinState> = {
-  ...fixedInitialWins,
-  ...Object.fromEntries(
-    projects.map((_, idx) => [
-      projectWinId(idx),
-      { open: false, x: PROJECT_START.x, y: PROJECT_START.y, z: 0, w: PROJECT_WIN_W },
-    ]),
-  ),
-}
-
-// Approximate rendered heights, used only to keep freshly-opened windows from
-// landing on top of ones that are already open — not the source of truth for
-// layout (the DOM decides actual height).
-const WINDOW_HEIGHT: Record<AppId, number> = {
-  about: 330,
+const WINDOW_WIDTH: Record<AppId, number> = {
+  about: 440,
   nowplaying: 300,
-  projects: 460,
-  weather: 380,
-  tools: 300,
-  github: 380,
+  projects: 600,
+  weather: 340,
+  tools: 440,
+  github: 780,
   contact: 360,
-  terminal: 360,
+  terminal: 460,
+}
+
+// Approximate rendered heights, used to lay windows out without overlap and to
+// keep a freshly-opened window from landing on top of open ones — not the
+// source of truth for layout (the DOM decides actual height).
+const WINDOW_HEIGHT: Record<AppId, number> = {
+  about: 460,
+  nowplaying: 275,
+  projects: 465,
+  weather: 300,
+  tools: 280,
+  github: 300,
+  contact: 390,
+  terminal: 375,
+}
+
+function getWindowWidth(id: WinId): number {
+  return id.startsWith('project-') ? PROJECT_WIN_W : WINDOW_WIDTH[id as AppId]
 }
 
 function getWindowHeight(id: WinId): number {
   return id.startsWith('project-') ? PROJECT_WIN_H : WINDOW_HEIGHT[id as AppId]
 }
 
+// Every window opens on a first visit; this is the order the auto-layout packs
+// them in (each project gets its own independent window).
+const DEFAULT_ORDER: WinId[] = [
+  'about',
+  'nowplaying',
+  'projects',
+  ...projects.map((_, idx) => projectWinId(idx)),
+  'tools',
+  'weather',
+  'github',
+  'contact',
+  'terminal',
+]
+
 const PLACEMENT_MARGIN = 24
 const PLACEMENT_STEP = 40
+const LAYOUT_GAP = 28
+const LAYOUT_START_X = 40
+const LAYOUT_START_Y = 300
 
 function rectsOverlap(
   a: { x: number; y: number; w: number; h: number },
@@ -104,12 +116,17 @@ function rectsOverlap(
 }
 
 // Finds the first on-canvas spot for `id` that doesn't overlap any other
-// currently-open window, cascading diagonally from its default position.
-function findFreePosition(id: WinId, wins: Record<WinId, WinState>, canvasWidth: number) {
-  const { w } = wins[id]
+// currently-open window, cascading diagonally from its last position.
+function findFreePosition(
+  id: WinId,
+  wins: Record<WinId, WinState>,
+  canvasWidth: number,
+  canvasHeight: number,
+) {
+  const { w, x: originX, y: originY } = wins[id]
   const h = getWindowHeight(id)
   const maxX = Math.max(0, canvasWidth - w)
-  const maxY = Math.max(10, CANVAS_HEIGHT - h - 40)
+  const maxY = Math.max(10, canvasHeight - h - 40)
   const openRects = Object.entries(wins)
     .filter(([otherId, other]) => otherId !== id && other.open)
     .map(([otherId, other]) => ({
@@ -119,8 +136,8 @@ function findFreePosition(id: WinId, wins: Record<WinId, WinState>, canvasWidth:
       h: getWindowHeight(otherId as WinId),
     }))
 
-  let x = initialWins[id].x
-  let y = initialWins[id].y
+  let x = originX
+  let y = originY
   for (let attempt = 0; attempt < 60; attempt++) {
     const cx = Math.min(Math.max(x, 0), maxX)
     const cy = Math.min(Math.max(y, 10), maxY)
@@ -134,9 +151,95 @@ function findFreePosition(id: WinId, wins: Record<WinId, WinState>, canvasWidth:
     if (y > maxY) y = 10
   }
   return {
-    x: Math.min(Math.max(initialWins[id].x, 0), maxX),
-    y: Math.min(Math.max(initialWins[id].y, 10), maxY),
+    x: Math.min(Math.max(originX, 0), maxX),
+    y: Math.min(Math.max(originY, 10), maxY),
   }
+}
+
+// Bottom-left-fill packing: places each window at the highest, then leftmost,
+// spot that clears every window already placed. Guarantees no overlaps.
+function packLayout(order: WinId[], canvasWidth: number): Record<string, { x: number; y: number }> {
+  const placed: { x: number; y: number; w: number; h: number }[] = []
+  const positions: Record<string, { x: number; y: number }> = {}
+  for (const id of order) {
+    const w = getWindowWidth(id)
+    const h = getWindowHeight(id)
+    const maxX = Math.max(LAYOUT_START_X, canvasWidth - w - LAYOUT_START_X)
+    // Candidate corners: the start, plus the left/right edges and top/bottom
+    // edges of everything already placed. Bottom-left fill picks among these.
+    const xs = new Set<number>([LAYOUT_START_X])
+    const ys = new Set<number>([LAYOUT_START_Y])
+    for (const r of placed) {
+      xs.add(r.x)
+      xs.add(r.x + r.w + LAYOUT_GAP)
+      ys.add(r.y)
+      ys.add(r.y + r.h + LAYOUT_GAP)
+    }
+    const sortedXs = [...xs].sort((a, b) => a - b)
+    const sortedYs = [...ys].sort((a, b) => a - b)
+    let spot: { x: number; y: number } | null = null
+    for (const y of sortedYs) {
+      for (const x of sortedXs) {
+        if (x < LAYOUT_START_X || x > maxX) continue
+        const candidate = { x, y, w, h }
+        if (placed.some((r) => rectsOverlap(candidate, r, LAYOUT_GAP))) continue
+        spot = { x, y }
+        break
+      }
+      if (spot) break
+    }
+    if (!spot) spot = { x: LAYOUT_START_X, y: LAYOUT_START_Y }
+    positions[id] = spot
+    placed.push({ x: spot.x, y: spot.y, w, h })
+  }
+  return positions
+}
+
+function buildDefaultWins(canvasWidth: number): Record<WinId, WinState> {
+  const positions = packLayout(DEFAULT_ORDER, canvasWidth)
+  const wins = {} as Record<WinId, WinState>
+  DEFAULT_ORDER.forEach((id, idx) => {
+    const pos = positions[id]
+    wins[id] = { open: true, x: pos.x, y: pos.y, z: idx + 1, w: getWindowWidth(id) }
+  })
+  return wins
+}
+
+function loadStoredWins(): Record<string, Partial<WinState>> | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed || parsed.v !== LAYOUT_VERSION || typeof parsed.wins !== 'object') {
+      return null
+    }
+    return parsed.wins as Record<string, Partial<WinState>>
+  } catch {
+    return null
+  }
+}
+
+// Start from the freshly packed defaults, then overlay whatever was saved.
+// Windows added since the last save keep their defaults; saved windows that no
+// longer exist are ignored — so a layout survives code changes gracefully.
+function loadOrBuildWins(canvasWidth: number): Record<WinId, WinState> {
+  const defaults = buildDefaultWins(canvasWidth)
+  const stored = loadStoredWins()
+  if (!stored) return defaults
+  const merged = { ...defaults }
+  for (const id of Object.keys(defaults) as WinId[]) {
+    const s = stored[id]
+    if (s && typeof s.x === 'number' && typeof s.y === 'number' && typeof s.open === 'boolean') {
+      merged[id] = {
+        open: s.open,
+        x: s.x,
+        y: s.y,
+        z: typeof s.z === 'number' ? s.z : defaults[id].z,
+        w: typeof s.w === 'number' ? s.w : defaults[id].w,
+      }
+    }
+  }
+  return merged
 }
 
 function scrollToElement(id: WinId) {
@@ -158,15 +261,15 @@ function App() {
     }
   })
   const [vw, setVw] = useState(() => window.innerWidth)
-  const [wins, setWins] = useState(initialWins)
+  const [wins, setWins] = useState(() => loadOrBuildWins(window.innerWidth))
   const [spotlight, setSpotlight] = useState(false)
   const [query, setQuery] = useState('')
-  const [zTop, setZTop] = useState(8)
+  const [zTop, setZTop] = useState(() => Math.max(8, ...Object.values(wins).map((w) => w.z)))
   const [activity, setActivity] = useState<ActivityState>({ status: 'loading' })
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
   const [locked, setLocked] = useState(true)
   const idle = useIdle(20_000)
-  const zTopRef = useRef(8)
+  const zTopRef = useRef(zTop)
   const dragRef = useRef<{ id: WinId; dx: number; dy: number } | null>(null)
 
   useEffect(() => {
@@ -186,6 +289,37 @@ function App() {
   const t = dark ? darkTheme : lightTheme
   const palette = dark ? contributionPalette.dark : contributionPalette.light
   const mobile = vw < MOBILE_BREAKPOINT
+
+  // Canvas grows to fit whatever the open windows need — the all-open packed
+  // layout runs taller than the old fixed canvas. A ref mirrors it so the
+  // once-registered drag handler always clamps against the current height.
+  const canvasHeight = useMemo(() => {
+    let max = BASE_CANVAS_HEIGHT
+    for (const id of Object.keys(wins) as WinId[]) {
+      const win = wins[id]
+      if (!win.open) continue
+      const bottom = win.y + getWindowHeight(id) + 160
+      if (bottom > max) max = bottom
+    }
+    return max
+  }, [wins])
+  const canvasHeightRef = useRef(canvasHeight)
+  useEffect(() => {
+    canvasHeightRef.current = canvasHeight
+  }, [canvasHeight])
+
+  // Persist the layout (positions + open/closed state) so a refresh restores
+  // it. Debounced so a drag doesn't hammer localStorage on every mouse move.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: LAYOUT_VERSION, wins }))
+      } catch {
+        // localStorage unavailable — layout just won't persist
+      }
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [wins])
 
   const bringToFront = useCallback(
     (
@@ -233,7 +367,7 @@ function App() {
       setWins((s) => {
         const w = s[drag.id]
         const nx = Math.min(Math.max(e.pageX - drag.dx, 0), window.innerWidth - w.w)
-        const ny = Math.min(Math.max(e.pageY - drag.dy, 10), CANVAS_HEIGHT - 40)
+        const ny = Math.min(Math.max(e.pageY - drag.dy, 10), canvasHeightRef.current - 40)
         return { ...s, [drag.id]: { ...w, x: nx, y: ny } }
       })
     }
@@ -281,6 +415,20 @@ function App() {
     setWins((s) => ({ ...s, [id]: { ...s[id], open: false } }))
   }, [])
 
+  // Clears the saved layout and re-packs every window open from scratch.
+  const resetLayout = useCallback(() => {
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+    } catch {
+      // localStorage unavailable — nothing to clear
+    }
+    const defaults = buildDefaultWins(window.innerWidth)
+    const maxZ = Math.max(8, ...Object.values(defaults).map((w) => w.z))
+    zTopRef.current = maxZ
+    setZTop(maxZ)
+    setWins(defaults)
+  }, [])
+
   const startDrag = useCallback(
     (id: WinId, e: MouseEvent<HTMLDivElement>) => {
       if (window.innerWidth < MOBILE_BREAKPOINT) return
@@ -297,7 +445,7 @@ function App() {
     (id: WinId) => {
       setWins((s) => {
         if (s[id].open) return s
-        const pos = findFreePosition(id, s, vw)
+        const pos = findFreePosition(id, s, vw, canvasHeightRef.current)
         return { ...s, [id]: { ...s[id], open: true, ...pos } }
       })
       scrollToElement(id)
@@ -309,7 +457,9 @@ function App() {
     (idx: number) => {
       const id = projectWinId(idx)
       bringToFront(id, (w, all) =>
-        w.open ? { open: true } : { open: true, ...findFreePosition(id, all, vw) },
+        w.open
+          ? { open: true }
+          : { open: true, ...findFreePosition(id, all, vw, canvasHeightRef.current) },
       )
       scrollToElement(id)
     },
@@ -321,7 +471,9 @@ function App() {
       setSpotlight(false)
       setQuery('')
       bringToFront(id, (w, all) =>
-        w.open ? { open: true } : { open: true, ...findFreePosition(id, all, vw) },
+        w.open
+          ? { open: true }
+          : { open: true, ...findFreePosition(id, all, vw, canvasHeightRef.current) },
       )
       scrollToElement(id)
     },
@@ -370,6 +522,34 @@ function App() {
       }}
     >
       <div
+        onClick={resetLayout}
+        title="Reset layout — reopen and re-tile every window"
+        style={{
+          position: 'fixed',
+          top: 20,
+          right: 72,
+          zIndex: 9500,
+          width: 40,
+          height: 40,
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 18,
+          cursor: 'pointer',
+          backdropFilter: 'saturate(180%) blur(20px)',
+          WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+          border: '0.5px solid',
+          background: t.pillBg,
+          borderColor: t.pillBorder,
+          color: t.barText,
+          boxShadow: '0 6px 18px rgba(20,30,50,0.16)',
+        }}
+      >
+        ↺
+      </div>
+
+      <div
         onClick={toggleDark}
         title="Toggle appearance"
         style={{
@@ -404,7 +584,7 @@ function App() {
             : {
                 position: 'relative',
                 width: '100%',
-                height: CANVAS_HEIGHT,
+                height: canvasHeight,
                 overflow: 'hidden',
               }
         }
@@ -424,7 +604,7 @@ function App() {
                   top: 0,
                   left: 0,
                   width: '100%',
-                  height: CANVAS_HEIGHT,
+                  height: canvasHeight,
                 }
           }
         >

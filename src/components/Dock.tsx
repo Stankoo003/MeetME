@@ -13,13 +13,11 @@ function DockIcon({
   id,
   title,
   onClick,
-  mobile,
   children,
 }: {
   id?: AppId
   title: string
   onClick: () => void
-  mobile: boolean
   children: React.ReactNode
 }) {
   return (
@@ -31,19 +29,6 @@ function DockIcon({
       style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}
     >
       {children}
-      {mobile && (
-        <span
-          style={{
-            fontSize: 10,
-            fontWeight: 500,
-            color: 'var(--dock-label-color, inherit)',
-            opacity: 0.75,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {title}
-        </span>
-      )}
     </div>
   )
 }
@@ -72,7 +57,7 @@ export function Dock({ t, mobile, onScrollToApp, onOpenSpotlight }: DockProps) {
         ...(mobile ? { maxWidth: '94vw', overflowX: 'auto' } : {}),
       }}
     >
-      <DockIcon id="about" title="About Me" mobile={mobile} onClick={() => onScrollToApp('about')}>
+      <DockIcon id="about" title="About Me" onClick={() => onScrollToApp('about')}>
         <div
           style={{
             width: 52,
@@ -111,12 +96,7 @@ export function Dock({ t, mobile, onScrollToApp, onOpenSpotlight }: DockProps) {
           </div>
         </div>
       </DockIcon>
-      <DockIcon
-        id="projects"
-        title="Projects"
-        mobile={mobile}
-        onClick={() => onScrollToApp('projects')}
-      >
+      <DockIcon id="projects" title="Projects" onClick={() => onScrollToApp('projects')}>
         <div
           style={{
             width: 52,
@@ -155,12 +135,7 @@ export function Dock({ t, mobile, onScrollToApp, onOpenSpotlight }: DockProps) {
           </div>
         </div>
       </DockIcon>
-      <DockIcon
-        id="tools"
-        title="Tools I Use"
-        mobile={mobile}
-        onClick={() => onScrollToApp('tools')}
-      >
+      <DockIcon id="tools" title="Tools I Use" onClick={() => onScrollToApp('tools')}>
         <div
           style={{
             width: 52,
@@ -180,12 +155,7 @@ export function Dock({ t, mobile, onScrollToApp, onOpenSpotlight }: DockProps) {
           <div style={{ background: '#fff', borderRadius: 3 }} />
         </div>
       </DockIcon>
-      <DockIcon
-        id="github"
-        title="Activity"
-        mobile={mobile}
-        onClick={() => onScrollToApp('github')}
-      >
+      <DockIcon id="github" title="Activity" onClick={() => onScrollToApp('github')}>
         <div
           style={{
             width: 52,
@@ -221,12 +191,7 @@ export function Dock({ t, mobile, onScrollToApp, onOpenSpotlight }: DockProps) {
           ))}
         </div>
       </DockIcon>
-      <DockIcon
-        id="nowplaying"
-        title="Now Playing"
-        mobile={mobile}
-        onClick={() => onScrollToApp('nowplaying')}
-      >
+      <DockIcon id="nowplaying" title="Now Playing" onClick={() => onScrollToApp('nowplaying')}>
         <div
           style={{
             width: 52,
@@ -244,12 +209,7 @@ export function Dock({ t, mobile, onScrollToApp, onOpenSpotlight }: DockProps) {
           ♪
         </div>
       </DockIcon>
-      <DockIcon
-        id="weather"
-        title="Milestones"
-        mobile={mobile}
-        onClick={() => onScrollToApp('weather')}
-      >
+      <DockIcon id="weather" title="Milestones" onClick={() => onScrollToApp('weather')}>
         <div
           style={{
             width: 52,
@@ -277,12 +237,7 @@ export function Dock({ t, mobile, onScrollToApp, onOpenSpotlight }: DockProps) {
           </svg>
         </div>
       </DockIcon>
-      <DockIcon
-        id="contact"
-        title="Contact"
-        mobile={mobile}
-        onClick={() => onScrollToApp('contact')}
-      >
+      <DockIcon id="contact" title="Contact" onClick={() => onScrollToApp('contact')}>
         <div
           style={{
             width: 52,
@@ -320,12 +275,7 @@ export function Dock({ t, mobile, onScrollToApp, onOpenSpotlight }: DockProps) {
           </div>
         </div>
       </DockIcon>
-      <DockIcon
-        id="terminal"
-        title="Terminal"
-        mobile={mobile}
-        onClick={() => onScrollToApp('terminal')}
-      >
+      <DockIcon id="terminal" title="Terminal" onClick={() => onScrollToApp('terminal')}>
         <div
           style={{
             width: 52,
@@ -346,7 +296,7 @@ export function Dock({ t, mobile, onScrollToApp, onOpenSpotlight }: DockProps) {
         </div>
       </DockIcon>
       <div style={{ width: 0.5, height: 42, margin: '0 1px', background: t.divider }} />
-      <DockIcon title="Spotlight" mobile={mobile} onClick={onOpenSpotlight}>
+      <DockIcon title="Spotlight" onClick={onOpenSpotlight}>
         <div
           style={{
             width: 52,
