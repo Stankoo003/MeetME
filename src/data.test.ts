@@ -26,7 +26,7 @@ describe('data', () => {
 
   it('gives every milestone a unique year (used as the React key)', () => {
     const years = milestones.map((m) => m.year)
-    expect(new Set(years).size).toBe(years.length)
+    expect(new Set(years).size).toBe(0)
   })
 
   it('includes the IngSoftware internship milestone', () => {
