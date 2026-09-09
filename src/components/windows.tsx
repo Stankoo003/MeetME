@@ -2,7 +2,11 @@ import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from
 import type { Theme } from '../theme'
 import { projects, tools, skills, milestones, type Project, type AppId } from '../data'
 import { BrandIcon } from './BrandIcon'
+import { NoticeDialog } from './NoticeDialog'
 import { asset } from '../lib/asset'
+
+/** One address, used by the contact card, the terminal and the access dialog. */
+const CONTACT_EMAIL = 'aleksastbusiness@gmail.com'
 
 const chipStyle = (t: Theme): CSSProperties => ({
   fontSize: 13,
@@ -30,16 +34,16 @@ export function AboutContent({ t }: { t: Theme }) {
         <div>
           <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.4 }}>Aleksa Stanković</div>
           <div style={{ fontSize: 15, color: '#0a84ff', fontWeight: 500 }}>
-            Mobile & Backend Developer · CS Student
+            Full-Stack Developer · CS Student
           </div>
           <div style={{ fontSize: 13, marginTop: 2, color: t.sub }}>Niš, Serbia · Open to work</div>
         </div>
       </div>
       <p style={{ fontSize: 14, lineHeight: 1.65, margin: '0 0 18px' }}>
-        Mobile and backend developer with hands-on experience building production apps in Swift,
-        SwiftUI, Kotlin and React Native. Expanding into backend with .NET, gRPC and Node.js.
-        Focused on clean architecture and real-world impact — currently completing a BSc in Computer
-        Science at the University of Niš.
+        Full-stack developer who ships the whole thing — Angular, React and Next.js on the front,
+        .NET, Spring and Node.js on the back, PostgreSQL underneath, plus production mobile apps in
+        Swift, SwiftUI, Kotlin and React Native. Focused on clean architecture and real-world impact
+        — currently completing a BSc in Computer Science at the University of Niš.
       </p>
       <div
         style={{
@@ -213,6 +217,65 @@ export function ProjectsContent({
   )
 }
 
+// Renders a real link when the project has a URL, and the same button greyed
+// out when it doesn't — so an unpublished project still shows what's missing
+// instead of hiding the affordance entirely.
+function ProjectLink({
+  label,
+  href,
+  onClick,
+  color,
+  background,
+}: {
+  label: string
+  href?: string
+  /** Used instead of `href` when the button opens a dialog rather than a URL. */
+  onClick?: () => void
+  color: string
+  background: string
+}) {
+  const shared: CSSProperties = {
+    fontSize: 13,
+    fontWeight: 500,
+    padding: '8px 16px',
+    border: 'none',
+    borderRadius: 8,
+    background,
+    color,
+  }
+
+  if (onClick) {
+    return (
+      <button onClick={onClick} style={{ ...shared, cursor: 'pointer' }}>
+        {label}
+      </button>
+    )
+  }
+
+  if (!href) {
+    return (
+      <button
+        disabled
+        title="Link coming soon"
+        style={{ ...shared, opacity: 0.45, cursor: 'not-allowed' }}
+      >
+        {label}
+      </button>
+    )
+  }
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      style={{ ...shared, textDecoration: 'none', display: 'inline-block' }}
+    >
+      {label}
+    </a>
+  )
+}
+
 function ProjectScreenshot({
   t,
   project,
@@ -281,6 +344,8 @@ export function ProjectDetailContent({
   project: Project
   onOpenScreenshot: (src: string, alt: string) => void
 }) {
+  const [noticeOpen, setNoticeOpen] = useState(false)
+
   return (
     <div style={{ padding: '26px 30px 30px' }}>
       <ProjectScreenshot key={project.name} t={t} project={project} onOpen={onOpenScreenshot} />
@@ -315,41 +380,31 @@ export function ProjectDetailContent({
       </div>
       <p style={{ fontSize: 14, lineHeight: 1.65, margin: '0 0 20px' }}>{project.desc}</p>
       <div style={{ display: 'flex', gap: 10 }}>
-        <button
-          disabled
-          title="Link coming soon"
-          style={{
-            fontSize: 13,
-            fontWeight: 500,
-            padding: '8px 16px',
-            background: '#0a84ff',
-            color: '#fff',
-            opacity: 0.45,
-            border: 'none',
-            borderRadius: 8,
-            cursor: 'not-allowed',
-          }}
-        >
-          View Live
-        </button>
-        <button
-          disabled
-          title="Link coming soon"
-          style={{
-            fontSize: 13,
-            fontWeight: 500,
-            padding: '8px 16px',
-            border: 'none',
-            borderRadius: 8,
-            cursor: 'not-allowed',
-            opacity: 0.45,
-            background: t.chipBg,
-            color: t.chipText,
-          }}
-        >
-          Source
-        </button>
+        <ProjectLink
+          label="View Live"
+          href={project.live}
+          onClick={project.liveNotice ? () => setNoticeOpen(true) : undefined}
+          color="#fff"
+          background="#0a84ff"
+        />
+        <ProjectLink
+          label="Source"
+          href={project.source}
+          color={t.chipText}
+          background={t.chipBg}
+        />
       </div>
+      {project.liveNotice && (
+        <NoticeDialog
+          t={t}
+          open={noticeOpen}
+          title={project.liveNotice.title}
+          body={project.liveNotice.body}
+          email={CONTACT_EMAIL}
+          emailSubject={`${project.name} — internal testing access`}
+          onClose={() => setNoticeOpen(false)}
+        />
+      )}
     </div>
   )
 }
@@ -579,9 +634,9 @@ export function NowPlayingWidget({
           >
             CURRENTLY BUILDING
           </div>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>Ora — Time Focus App</div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>ReelLab — Short-Video App</div>
           <div style={{ fontSize: 13, color: 'rgba(244,242,248,0.7)', marginTop: 2 }}>
-            iOS / watchOS focus app with flow scoring & Apple Watch support.
+            Expo client with on-device FFmpeg editing, R2 uploads & a Next.js API.
           </div>
           <div
             style={{
@@ -774,12 +829,10 @@ export function ContactContent({ t }: { t: Theme }) {
         AS
       </div>
       <div style={{ fontSize: 18, fontWeight: 700 }}>Let's connect</div>
-      <div style={{ fontSize: 13, margin: '4px 0 20px', color: t.sub }}>
-        aleksastbusiness@gmail.com
-      </div>
+      <div style={{ fontSize: 13, margin: '4px 0 20px', color: t.sub }}>{CONTACT_EMAIL}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <a
-          href="mailto:aleksastbusiness@gmail.com"
+          href={`mailto:${CONTACT_EMAIL}`}
           style={{ ...linkBase, background: '#0a84ff', color: '#fff' }}
         >
           Email me
@@ -805,7 +858,7 @@ export function ContactContent({ t }: { t: Theme }) {
   )
 }
 
-const TERMINAL_EMAIL = 'aleksastbusiness@gmail.com'
+const TERMINAL_EMAIL = CONTACT_EMAIL
 const TERMINAL_HELP = [
   'Available commands:',
   '  whoami            who you are talking to',

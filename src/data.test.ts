@@ -29,6 +29,24 @@ describe('data', () => {
     expect(new Set(years).size).toBe(years.length)
   })
 
+  it('lists the three IngSoftware internship projects first', () => {
+    expect(projects.slice(0, 3).map((p) => p.name)).toEqual(['Kartly', 'Keyframe', 'ReelLab'])
+    for (const p of projects.slice(0, 3)) {
+      expect(p.org).toContain('IngSoftware')
+      expect(p.tags.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('keeps catalog project targets aligned with the projects array', () => {
+    for (const entry of catalog) {
+      const match = /^project-(\d+)$/.exec(entry.target)
+      if (!match) continue
+      const idx = Number(match[1])
+      expect(projects[idx], `catalog "${entry.name}" points at a missing project`).toBeDefined()
+      expect(projects[idx].name).toBe(entry.name)
+    }
+  })
+
   it('includes the IngSoftware internship milestone', () => {
     expect(milestones.some((m) => m.label === 'Ing Internship')).toBe(true)
   })

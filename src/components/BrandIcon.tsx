@@ -1,9 +1,13 @@
+import angularSvg from 'simple-icons/icons/angular.svg?raw'
 import dockerSvg from 'simple-icons/icons/docker.svg?raw'
 import dotnetSvg from 'simple-icons/icons/dotnet.svg?raw'
+import ffmpegSvg from 'simple-icons/icons/ffmpeg.svg?raw'
 import kotlinSvg from 'simple-icons/icons/kotlin.svg?raw'
+import nextjsSvg from 'simple-icons/icons/nextdotjs.svg?raw'
 import nodejsSvg from 'simple-icons/icons/nodedotjs.svg?raw'
 import postgresqlSvg from 'simple-icons/icons/postgresql.svg?raw'
 import reactSvg from 'simple-icons/icons/react.svg?raw'
+import springSvg from 'simple-icons/icons/spring.svg?raw'
 import swiftSvg from 'simple-icons/icons/swift.svg?raw'
 import appleSvg from 'simple-icons/icons/apple.svg?raw'
 import type { BrandIconName } from '../data'
@@ -15,9 +19,14 @@ const ICONS: Record<BrandIconName, string> = {
   swiftui: appleSvg,
   kotlin: kotlinSvg,
   'react-native': reactSvg,
+  react: reactSvg,
+  angular: angularSvg,
+  nextjs: nextjsSvg,
   dotnet: dotnetSvg,
+  spring: springSvg,
   nodejs: nodejsSvg,
   postgresql: postgresqlSvg,
+  ffmpeg: ffmpegSvg,
   docker: dockerSvg,
 }
 

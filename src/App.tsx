@@ -35,7 +35,7 @@ const MOBILE_BREAKPOINT = 760
 
 // Persisted layout. Bump the version to discard saved layouts after a
 // structural change (windows added/removed, different default sizing).
-const LAYOUT_VERSION = 1
+const LAYOUT_VERSION = 2
 const STORAGE_KEY = 'meetme-layout'
 
 interface WinState {
@@ -64,11 +64,11 @@ const WINDOW_WIDTH: Record<AppId, number> = {
 // keep a freshly-opened window from landing on top of open ones — not the
 // source of truth for layout (the DOM decides actual height).
 const WINDOW_HEIGHT: Record<AppId, number> = {
-  about: 460,
+  about: 500,
   nowplaying: 275,
   projects: 465,
   weather: 300,
-  tools: 280,
+  tools: 460,
   github: 300,
   contact: 390,
   terminal: 375,
