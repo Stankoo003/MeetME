@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from
 import type { Theme } from '../theme'
 import { projects, tools, skills, milestones, type Project, type AppId } from '../data'
 import { BrandIcon } from './BrandIcon'
+import { asset } from '../lib/asset'
 
 const chipStyle = (t: Theme): CSSProperties => ({
   fontSize: 13,
@@ -16,7 +17,7 @@ export function AboutContent({ t }: { t: Theme }) {
     <div style={{ padding: '30px 34px 34px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 20 }}>
         <img
-          src="/profile.jpg"
+          src={asset('profile.jpg')}
           alt="Aleksa Stanković"
           style={{
             width: 72,
@@ -228,7 +229,7 @@ function ProjectScreenshot({
     <div
       onClick={
         hasImage
-          ? () => onOpen(project.screenshot as string, `${project.full} screenshot`)
+          ? () => onOpen(asset(project.screenshot as string), `${project.full} screenshot`)
           : undefined
       }
       title={hasImage ? 'View full screenshot' : undefined}
@@ -250,7 +251,7 @@ function ProjectScreenshot({
     >
       {hasImage ? (
         <img
-          src={project.screenshot}
+          src={asset(project.screenshot as string)}
           alt={`${project.full} screenshot`}
           loading="lazy"
           onError={() => setFailed(true)}
@@ -537,9 +538,11 @@ export function NowPlayingWidget({
                 textOverflow: 'ellipsis',
               }}
             >
-              Late-night coding
+              IngSoftware Internship
             </div>
-            <div style={{ fontSize: 13, color: 'rgba(244,242,248,0.7)' }}>Lo-fi focus beats</div>
+            <div style={{ fontSize: 13, color: 'rgba(244,242,248,0.7)' }}>
+              AI-Powered Full Stack · Jul–Sep 2026
+            </div>
             <div
               style={{
                 display: 'flex',

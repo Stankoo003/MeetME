@@ -1,0 +1,123 @@
+# Build, verify and publish the site to GitHub Pages.
+#
+# Two jobs on purpose:
+#   test    — every quality gate (types, lint, formatting, unit tests, prod build)
+#   deploy  — publishes to Pages, and declares `needs: test`
+#
+# The `needs` dependency is what makes the gate real and visible: if `test` fails,
+# `deploy` is reported as *skipped* and nothing reaches the live site. Merging both
+# into one job would still stop on failure, but the reason would be buried in a
+# step log instead of shown in the run graph.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main] # the repository's default branch
+  workflow_dispatch: # lets you re-run a deploy by hand from the Actions tab
+
+# Serialise deploys. Two pushes in quick succession queue up instead of racing
+# each other, so the live site is never assembled from two different commits.
+# cancel-in-progress is deliberately false: killing a deploy mid-upload is the
+# one way to leave Pages in a half-published state.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+# Least privilege by default. The extra write scopes Pages needs are granted
+# only on the deploy job below, never to the job that runs project code.
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Gate. Nothing here touches the deployed site; it only decides whether the
+  # commit is allowed to be deployed at all.
+  # ---------------------------------------------------------------------------
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          # Caches the npm download cache, keyed on package-lock.json, so repeat
+          # runs don't refetch every package from the registry.
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          HUSKY: 0 # skip git hook installation; there are no commits in CI
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Unit tests
+        run: npm run test
+
+      # A production build that fails is a broken deploy caught early.
+      - name: Production build
+        run: npm run build
+
+  # ---------------------------------------------------------------------------
+  # Publish. Runs only after `test` is green.
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Deploy
+    needs: test # <- the gate
+    runs-on: ubuntu-latest
+
+    permissions:
+      pages: write # create a Pages deployment
+      id-token: write # OIDC token deploy-pages exchanges for its credentials
+
+    # Ties the run to the github-pages environment so the live URL shows up on
+    # the run summary and in the repo's Environments tab.
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          HUSKY: 0
+
+      - uses: actions/configure-pages@v5
+
+      # Rebuilt here because jobs don't share a filesystem. The build takes
+      # seconds, so this is cheaper than shuttling dist/ between jobs as an
+      # artifact. NODE_ENV=production makes vite.config.ts apply base: '/MeetME/',
+      # which every asset URL on a project Pages site needs.
+      - name: Build
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+      # No 404.html fallback is uploaded: this app has no client-side router.
+      # All state lives in React state + localStorage on a single page, so there
+      # are no deep links for Pages to fail to resolve. Add one here if a router
+      # is ever introduced.
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

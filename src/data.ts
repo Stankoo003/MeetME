@@ -31,7 +31,7 @@ export const projects: Project[] = [
     desc: 'iOS/watchOS productivity app with deep focus sessions, flow scoring, and Apple Watch integration. Home-screen widgets, complications, and a minimal typographic design system.',
     tags: ['Swift', 'SwiftUI', 'watchOS', 'WidgetKit', 'CoreData'],
     bar: 'linear-gradient(90deg,#7c5cff,#5b3be6)',
-    screenshot: '/screenshots/ora.png',
+    screenshot: 'screenshots/ora.png',
   },
   {
     name: 'Pravilo Posta',
@@ -41,7 +41,7 @@ export const projects: Project[] = [
     desc: 'Cross-platform mobile app live on the App Store and Google Play. Funded by a monastery in Divljane and built to their requirements — a clean, minimal design tailored to their audience.',
     tags: ['React Native', 'iOS', 'Android', 'App Store', 'Google Play'],
     bar: 'linear-gradient(90deg,#4a97ee,#2f6fd0)',
-    screenshot: '/screenshots/pravilo-posta.png',
+    screenshot: 'screenshots/pravilo-posta.png',
   },
   {
     name: 'WeSucceed',
@@ -51,7 +51,7 @@ export const projects: Project[] = [
     desc: "Research-backed mobile app supporting women entrepreneurs' competency development. Built iOS in Swift/SwiftUI and co-developed Android in Kotlin/XML. Funded by the Science Fund of the Republic of Serbia (#1012).",
     tags: ['Swift', 'SwiftUI', 'Kotlin', 'iOS', 'Android'],
     bar: 'linear-gradient(90deg,#28b57f,#1f9468)',
-    screenshot: '/screenshots/wesucceed.png',
+    screenshot: 'screenshots/wesucceed.png',
   },
   {
     name: 'Chlanko',
@@ -61,7 +61,7 @@ export const projects: Project[] = [
     desc: 'Cross-platform club management app in React Native, Expo and TypeScript. Role-based access across four roles, a financial module (billing, expenses, reconciliation), scheduling with recurring templates, MinIO/S3 uploads, and EN/SR localization.',
     tags: ['React Native', 'Expo', 'TypeScript', 'PostgreSQL'],
     bar: 'linear-gradient(90deg,#f3902e,#e0791a)',
-    screenshot: '/screenshots/club-manager.png',
+    screenshot: 'screenshots/club-manager.png',
   },
 ]
 
@@ -132,7 +132,7 @@ export const catalog: CatalogItem[] = [
   {
     target: 'nowplaying',
     name: 'Now Playing',
-    sub: 'Building Ora · lo-fi',
+    sub: 'IngSoftware AI Full Stack internship',
     letter: 'N',
     color: 'linear-gradient(160deg,#c98bff,#8a4fe0)',
   },
@@ -166,4 +166,5 @@ export const milestones = [
   { year: '2022', label: 'BSc' },
   { year: '2024', label: 'Lead iOS' },
   { year: '2025', label: 'Shipped' },
+  { year: 'Jul–Sep 2026', label: 'Ing Internship' },
 ]
