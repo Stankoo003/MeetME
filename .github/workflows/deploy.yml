@@ -13,15 +13,19 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main] # the repository's default branch
+  pull_request:
+    branches: [main] # run the gate on PRs too, so branch protection has a check to wait on
   workflow_dispatch: # lets you re-run a deploy by hand from the Actions tab
 
-# Serialise deploys. Two pushes in quick succession queue up instead of racing
-# each other, so the live site is never assembled from two different commits.
-# cancel-in-progress is deliberately false: killing a deploy mid-upload is the
-# one way to leave Pages in a half-published state.
+# Serialise deploys. Two pushes to main in quick succession queue up instead of
+# racing each other, so the live site is never assembled from two commits, and
+# cancel-in-progress stays false there: killing a deploy mid-upload is the one
+# way to leave Pages half-published. Pull requests get their own group per
+# branch and DO cancel superseded runs — a PR publishes nothing, so an obsolete
+# run is pure waste.
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.ref) || 'pages' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Least privilege by default. The extra write scopes Pages needs are granted
 # only on the deploy job below, never to the job that runs project code.
@@ -73,6 +77,9 @@ jobs:
   deploy:
     name: Deploy
     needs: test # <- the gate
+    # Pull requests run the gate only. Publishing happens once the change is on
+    # main, never from a proposed branch.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
 
     permissions:
